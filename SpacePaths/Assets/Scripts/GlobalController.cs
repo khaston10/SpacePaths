@@ -25,6 +25,13 @@ public class GlobalController : MonoBehaviour
 
     private void Awake()
     {
+        amountOfEasySolved = PlayerPrefs.GetInt("amountOfEasySolved");
+        amountOfMediumSolved = PlayerPrefs.GetInt("amountOfMediumSolved");
+        amountOfHardSolved = PlayerPrefs.GetInt("amountOfHardSolved");
+        averageTimeForEasy = PlayerPrefs.GetFloat("averageTimeForEasy");
+        averageTimeForMed = PlayerPrefs.GetFloat("averageTimeForMed");
+        averageTimeForHard = PlayerPrefs.GetFloat("averageTimeForHard");
+
         if (Instance == null)
         {
             DontDestroyOnLoad(gameObject);
@@ -35,5 +42,10 @@ public class GlobalController : MonoBehaviour
         {
             Destroy(gameObject);
         }
+    }
+
+    private void Start()
+    {
+        
     }
 }

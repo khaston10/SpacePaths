@@ -29,17 +29,18 @@ public class StartController : MonoBehaviour
     public Image[] easyStars;
     public Image[] mediumStars;
     public Image[] hardStars;
+    public GameObject[] BGImages;
 
     #endregion
 
     #region Variables Mics
 
-    // These values are given in minutes and will need to be tweaked for a balanced game.
-    private float fiveStarTimeLimit = 1;
-    private float fourStarTimeLimit = 2;
-    private float threeStarTimeLimit = 3;
-    private float twoStarTimeLimit = 4;
-    private float oneStarTimeLimit = 5;
+    // These values are given in seconds and will need to be tweaked for a balanced game.
+    private float fiveStarTimeLimit = 5;
+    private float fourStarTimeLimit = 10;
+    private float threeStarTimeLimit = 20;
+    private float twoStarTimeLimit = 40;
+    private float oneStarTimeLimit = 60;
 
     public Text easyPuzzlesSolvedText;
     public Text mediumPuzzlesSolvedText;
@@ -55,6 +56,7 @@ public class StartController : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
+        LoadBGImage();
         LoadData();
         SetTextAndImagesOnStart();
     }
@@ -80,6 +82,14 @@ public class StartController : MonoBehaviour
         GlobalController.Instance.musicVolume = musicVolume;
         GlobalController.Instance.sfxVolume = sfxVolume;
         GlobalController.Instance.currentPuzzleDifficulty = currentPuzzleDifficulty;
+
+        // Save to player prefs.
+        PlayerPrefs.SetInt("amountOfEasySolved", amountOfEasySolved);
+        PlayerPrefs.SetInt("amountOfMediumSolved", amountOfMediumSolved);
+        PlayerPrefs.SetInt("amountOfHardSolved", amountOfHardSolved);
+        PlayerPrefs.SetFloat("averageTimeForEasy", averageTimeForEasy);
+        PlayerPrefs.SetFloat("averageTimeForMed", averageTimeForMed);
+        PlayerPrefs.SetFloat("averageTimeForHard", averageTimeForHard);
     }
 
     public void LoadData()
@@ -180,6 +190,27 @@ public class StartController : MonoBehaviour
         
     }
 
+    public void LoadBGImage()
+    {
+        Instantiate(BGImages[Random.Range(0, BGImages.Length)]);
+    }
+
+    public void ClickResetData()
+    {
+        PlayAudioClip(3);
+
+        amountOfEasySolved = 0;
+        amountOfMediumSolved = 0;
+        amountOfHardSolved = 0;
+        averageTimeForEasy = 0;
+        averageTimeForMed = 0;
+        averageTimeForHard = 0;
+
+        SaveData();
+
+        SetTextAndImagesOnStart();
+    }
+
     #region Functions Sound
 
     public void ToggleSettingsPanel()
@@ -223,9 +254,12 @@ public class StartController : MonoBehaviour
     public void PlayAudioClip(int clip) 
     {
         /*
-            0 - Mouse click Good 1
-            1 - Mouse click Good 2
-            2 - Mouse click Bad 1
+        0 - Mouse click Good 1
+        1 - Mouse click Good 2
+        2 - Mouse click Bad 1
+        3 - Mouse click Electric 1
+        4 - Mouse click Electric 2
+        5 - Celebrate
         */
 
         GameObject.Find("Sfx Source").GetComponent<SoundEffectsController>().PlayClip(clip);

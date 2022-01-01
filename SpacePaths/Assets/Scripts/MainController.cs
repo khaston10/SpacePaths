@@ -30,6 +30,7 @@ public class MainController : MonoBehaviour
     private float timer;
     private float mins;
     private float secs;
+    public GameObject[] BGImages;
 
     #endregion
 
@@ -39,6 +40,7 @@ public class MainController : MonoBehaviour
     public GameObject MainPanel;
     public GameObject SettingsPanel;
     public GameObject PuzzleSolvedPanel;
+    public Button skipButton;
     public Slider musicSlider;
     public Slider SFXSlider;
 
@@ -47,8 +49,9 @@ public class MainController : MonoBehaviour
     #region Variables Vertices
 
     public bool pathStarted = false;
-    private bool puzzleIsSolvable = false;
+    private bool puzzleIsSolvable;
     public Button[] vertices;
+    public Image[] verticesBackgroundImages;
     public Text[] degreeText;
     int amountOfVertices = 0;
     int amountOfColors = 0;
@@ -58,7 +61,7 @@ public class MainController : MonoBehaviour
     List<string> colorsInUse = new List<string>();
     List<string> colorsToBeUsed = new List<string>();
     List<int> verticesStartingSize = new List<int>();
-    private float pathContinuetimer = .5f;
+    private float pathContinuetimer = .1f;
 
     // This will hold the current path.
     private List<int> currentPath = new List<int>();
@@ -74,32 +77,10 @@ public class MainController : MonoBehaviour
     void Start()
     {
         LoadData();
+        LoadBGImage();
         SetVolumeSlidersAndLevelsOnStart();
+        SetNewPuzzle();
 
-        while (!puzzleIsSolvable)
-        {
-
-
-            // Reset Lists FOr New Puzzle.
-            verticiesInUse.Clear();
-            verticiesInUse  = new List<int>();
-            colorsInUse.Clear();
-            colorsInUse = new List<string>();
-            colorsToBeUsed.Clear();
-            colorsToBeUsed = new List<string>();
-            verticesStartingSize.Clear();
-            verticesStartingSize = new List<int>();
-            colorsAvailable.Clear();
-            colorsAvailable = new List<string> { "cyan", "red", "blue", "magenta" };
-            verticiesAvailable.Clear();
-            verticiesAvailable = new List<int> { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
-
-            SetNewPuzzle();
-            puzzleIsSolvable = CheckPuzzleForSolvability();
-
-            if (!puzzleIsSolvable) print("Puzzle Rejected");
-        }
-        
     }
 
     // Update is called once per frame
@@ -134,6 +115,14 @@ public class MainController : MonoBehaviour
         GlobalController.Instance.musicVolume = musicVolume;
         GlobalController.Instance.sfxVolume = sfxVolume;
         GlobalController.Instance.currentPuzzleDifficulty = currentPuzzleDifficulty;
+
+        // Save to player prefs.
+        PlayerPrefs.SetInt("amountOfEasySolved", amountOfEasySolved);
+        PlayerPrefs.SetInt("amountOfMediumSolved", amountOfMediumSolved);
+        PlayerPrefs.SetInt("amountOfHardSolved", amountOfHardSolved);
+        PlayerPrefs.SetFloat("averageTimeForEasy", averageTimeForEasy);
+        PlayerPrefs.SetFloat("averageTimeForMed", averageTimeForMed);
+        PlayerPrefs.SetFloat("averageTimeForHard", averageTimeForHard);
     }
 
     public void LoadData()
@@ -149,6 +138,11 @@ public class MainController : MonoBehaviour
         currentPuzzleDifficulty = GlobalController.Instance.currentPuzzleDifficulty;
     }
 
+    public void LoadBGImage()
+    {
+        Instantiate(BGImages[Random.Range(0, BGImages.Length)]);
+    }
+
     #endregion
 
     #region Functions Sound
@@ -159,11 +153,13 @@ public class MainController : MonoBehaviour
 
         if (SettingsPanel.activeInHierarchy)
         {
+            MainPanel.SetActive(true);
             SettingsPanel.SetActive(false);
         }
 
         else
         {
+            MainPanel.SetActive(false);
             SettingsPanel.SetActive(true);
         }
     }
@@ -207,19 +203,18 @@ public class MainController : MonoBehaviour
 
     #endregion
 
-
     #region Functions Vertices
 
     public void SetNewPuzzle()
     {
         // For easy puzzles we will have a min of 3 vertices, and max of 6.
-        // All colors will be used.
+        // All colors will be used.For the time being colors have not been worked in and the number of 4 is used for all levels.
 
         // For med puzzles we will have a min of 5 vertices, and max of 8.
-        // 3 colors will be used.
+        // 3 colors will be used.For the time being colors have not been worked in and the number of 4 is used for all levels.
 
         // For hard puzzles we will have a min of 7 vertices, and max of 12.
-        // 2 colors will be used.
+        // 2 colors will be used. For the time being colors have not been worked in and the number of 4 is used for all levels.
 
         if (currentPuzzleDifficulty == 0)
         {
@@ -232,14 +227,14 @@ public class MainController : MonoBehaviour
         else if (currentPuzzleDifficulty == 1)
         {
             amountOfVertices = Random.Range(5, 8);
-            amountOfColors = 3;
+            amountOfColors = 4;
 
         }
             
         else if (currentPuzzleDifficulty == 2)
         {
             amountOfVertices = Random.Range(7, 12);
-            amountOfColors = 2;
+            amountOfColors = 4;
         } 
         
         for (int i= 0; i < amountOfVertices; i++)
@@ -267,45 +262,120 @@ public class MainController : MonoBehaviour
             vertices[verticiesInUse[i]].gameObject.SetActive(true);
         }
 
+        // To ensure the puzzle is solvable we need to decide on the vertices sizes but creating a path first.
+        #region Create a temp path for solvabilty.
+
+        bool tempPathIsCompleted = false;
+        List<int> tempPath = new List<int>();
+
+        //1. Pick a start point.
+        tempPath.Add(verticiesInUse[Random.Range(0, verticiesInUse.Count)]);
+
+        //2. While the path is not completed, continue to build the path.
+        int loopCount = 0;
+        while (!tempPathIsCompleted)
+        {
+            loopCount += 1;
+            int nextVertexInPath = verticiesInUse[Random.Range(0, verticiesInUse.Count)];
+
+            // Check to ensure the path does not point back to the same vertex.
+            if (nextVertexInPath != tempPath[tempPath.Count - 1])
+            {
+                // Check to ensure that the proposed edge is not already listed in the path.
+                bool edgeAlreadyExists = false;
+
+                for (int i = 0; i < tempPath.Count - 1; i++)
+                {
+                     if (tempPath[i] == tempPath[tempPath.Count - 1] && tempPath[i + 1] == nextVertexInPath)
+                    {
+                        edgeAlreadyExists = true;
+                    }
+
+                    if (tempPath[i + 1] == tempPath[tempPath.Count - 1] && tempPath[i] == nextVertexInPath)
+                    {
+                        edgeAlreadyExists = true;
+                    }
+                }
+
+                if (!edgeAlreadyExists)
+                {
+                    tempPath.Add(nextVertexInPath);
+                }
+            }
+
+            // Check to see if the path has the minimium requirements to end. This means every vertex in use is listed on the temp path at least once.
+            tempPathIsCompleted = true;
+
+            for (int i = 0; i < verticiesInUse.Count; i++)
+            {
+                if (tempPath.Contains(verticiesInUse[i]))
+                {
+                    
+                }
+
+                else
+                {
+                    tempPathIsCompleted = false;
+                }
+            }
+
+            // To make paths more complicated there is a 50% chance that the path will be continued even if the path meets the minium reqs.
+            if (tempPathIsCompleted)
+            {
+                if (Random.Range(0, 100) > 50 && loopCount < 1000)
+                {
+                    tempPathIsCompleted = false;
+                }
+            }
+        }
+
+        // Update the starting size based upon the temp path.
+        for (int i = 0; i < verticiesInUse.Count; i++)
+        {
+            int degreeOfVertex = 0;
+
+            if (tempPath[0] == verticiesInUse[i]) degreeOfVertex += 1; // Only count the start point once.
+
+            for (int j = 1; j < tempPath.Count - 1; j++)
+            {
+                if (tempPath[j] == verticiesInUse[i]) degreeOfVertex += 2;
+            }
+
+            if (tempPath[tempPath.Count - 1] == verticiesInUse[i]) degreeOfVertex += 1; // Only count the end point once.
+
+            verticesStartingSize.Add(degreeOfVertex);
+        }
+
+        
+
+        string pathAsString = "";
+
+        for (int i = 0; i < tempPath.Count; i++)
+        {
+            pathAsString += tempPath[i].ToString();
+            pathAsString += " ,";
+        }
+
+        print("Path: " + pathAsString);
+
+        #endregion
+
         // Set Size and Color.
         for (int i = 0; i < verticiesInUse.Count; i++)
         {
             var indexOfColor = Random.Range(0, colorsToBeUsed.Count);
             colorsInUse.Add(colorsToBeUsed[indexOfColor]); // Save this information so that the vertex color can be restored if the puzzle needs to be reset.
-            var size = Random.Range(1, verticiesInUse.Count);
             ChangeVertexColor(verticiesInUse[i], colorsToBeUsed[indexOfColor]);
-            ChangeVertexSize(verticiesInUse[i], size);
-            verticesStartingSize.Add(size);
+            ChangeVertexSize(verticiesInUse[i], verticesStartingSize[i]);
         }
 
-    }
-
-    public bool CheckPuzzleForSolvability()
-    {
-        // Returns true if the puzzle can be solved.
-
-        // There can only be at most two vertices with an odd degree.
-        int numberOfOddVerticies = 0;
-        print("There are " + verticiesInUse.Count + " vertices in use.");
-        for (int indexOfVertex = 0; indexOfVertex < verticiesInUse.Count; indexOfVertex++)
-        {
-            
-            var temp = GetVertexSize(verticiesInUse[indexOfVertex]);
-            print("The size of vertex: " + indexOfVertex + " is: " + temp.ToString());
-            if (temp==1 || temp == 3 || temp == 5)
-            {
-                
-                numberOfOddVerticies += 1;
-            }
-        }
-
-        if (numberOfOddVerticies > 2) return false;
-
-        return true;
     }
 
     public void StartPath(int vertexNum)
     {
+        // Disable the skip button if it is still enabled.
+        skipButton.gameObject.SetActive(false);
+
         PlayAudioClip(4);
 
         if (!pathStarted && vertices[vertexNum].GetComponent<RectTransform>().rect.height > 30)
@@ -329,19 +399,28 @@ public class MainController : MonoBehaviour
             if (currentPuzzleDifficulty == 0)
             {
                 amountOfEasySolved += 1;
-                // Need to cal average.
+
+                // Calculate new average.
+                var newAverage = ((amountOfEasySolved - 1) * averageTimeForEasy) + timer / amountOfEasySolved;
+                averageTimeForEasy = newAverage;
             }
 
             else if (currentPuzzleDifficulty == 1)
             {
                 amountOfMediumSolved += 1;
-                // Need to cal average.
+
+                // Calculate new average.
+                var newAverage = ((amountOfMediumSolved - 1) * averageTimeForMed) + timer / amountOfMediumSolved;
+                averageTimeForMed = newAverage;
             }
 
             else if (currentPuzzleDifficulty == 2)
             {
                 amountOfHardSolved += 1;
-                // Need to cal average.
+
+                // Calculate new average.
+                var newAverage = ((amountOfHardSolved - 1) * averageTimeForHard) + timer / amountOfHardSolved;
+                averageTimeForHard = newAverage;
             }
 
             SaveData();
@@ -352,11 +431,21 @@ public class MainController : MonoBehaviour
             TogglePuzzleSolvedPanel();
         }
 
-        // If it has not we need to reset the puzzle.
-        for (int i = 0; i < verticiesInUse.Count; i++)
+        else
         {
-            ChangeVertexSize(verticiesInUse[i], verticesStartingSize[i]);
-            ChangeVertexColor(verticiesInUse[i], colorsInUse[i]);
+            // If it has not we need to reset the puzzle.
+            // Play the shale animation.
+            for (int i = 0; i < verticiesInUse.Count; i++)
+            {
+                PlayAnimation(verticesBackgroundImages[verticiesInUse[i]].gameObject, "Shake");
+            }
+
+            for (int i = 0; i < verticiesInUse.Count; i++)
+            {
+                ChangeVertexSize(verticiesInUse[i], verticesStartingSize[i]);
+                ChangeVertexColor(verticiesInUse[i], colorsInUse[i]);
+            }
+
         }
 
         pathStarted = false;
@@ -367,6 +456,7 @@ public class MainController : MonoBehaviour
 
         //Draw a line between these points.
         UpdateThePathRenderer();
+
     }
 
     public bool IsPuzzleComplete()
@@ -395,27 +485,33 @@ public class MainController : MonoBehaviour
                 // We also do not want to add an edge if it already exists.
                 if (!CheckIfEdgeExists(currentPath[currentPath.Count-1], vertexNum))
                 {
-                    // Change the size of the next vertex and the one the edge is leaving..
-                    ChangeVertexSize(vertexNum, Mathf.RoundToInt(vertices[vertexNum].GetComponent<RectTransform>().rect.height - 40) / 10);
-                    ChangeVertexSize(currentPath[currentPath.Count-1], Mathf.RoundToInt(vertices[currentPath[currentPath.Count-1]].GetComponent<RectTransform>().rect.height - 40) / 10);
-
-                    // Change the color to grey if the vertex is size 0.
-                    if (vertices[vertexNum].GetComponent<RectTransform>().rect.height == 30)
+                    // We need to check the size of the previously selected vertex to ensure it still have a size of 1 or greater.
+                    if (GetVertexSize(currentPath[currentPath.Count - 1]) > 0)
                     {
-                        ChangeVertexColor(vertexNum, "grey");
+                        // Change the size of the next vertex and the one the edge is leaving..
+                        ChangeVertexSize(vertexNum, Mathf.RoundToInt(vertices[vertexNum].GetComponent<RectTransform>().rect.height - 40) / 10);
+                        ChangeVertexSize(currentPath[currentPath.Count - 1], Mathf.RoundToInt(vertices[currentPath[currentPath.Count - 1]].GetComponent<RectTransform>().rect.height - 40) / 10);
+
+                        // Change the color to grey if the vertex is size 0.
+                        if (vertices[vertexNum].GetComponent<RectTransform>().rect.height == 30)
+                        {
+                            ChangeVertexColor(vertexNum, "grey");
+                        }
+
+                        // Reset path continue timer so the path can not grow too fast.
+                        pathContinuetimer = .1f;
+
+                        // Add point the the current path.
+                        currentPath.Add(vertexNum);
+                        pathPoints.Add(vertices[vertexNum].transform);
+
+                        //Draw a line between these points.
+                        UpdateThePathRenderer();
+
+                        PlayAudioClip(0);
                     }
 
-                    // Reset path continue timer so the path can not grow too fast.
-                    pathContinuetimer = .5f;
-
-                    // Add point the the current path.
-                    currentPath.Add(vertexNum);
-                    pathPoints.Add(vertices[vertexNum].transform);
-
-                    //Draw a line between these points.
-                    UpdateThePathRenderer();
-
-                    PlayAudioClip(0);
+                    
                 }
                 
             }
@@ -427,13 +523,15 @@ public class MainController : MonoBehaviour
     {
         // Valid colors - 'green', 'red', 'blue', 'white', 'grey', 'magenta', 'cyan' 
 
-        if (color == "green") vertices[vertexNum].GetComponent<Image>().color = Color.green;
-        else if (color == "red") vertices[vertexNum].GetComponent<Image>().color = Color.red;
-        else if (color == "blue") vertices[vertexNum].GetComponent<Image>().color = Color.blue;
-        else if (color == "cyan") vertices[vertexNum].GetComponent<Image>().color = Color.cyan;
-        else if (color == "magenta") vertices[vertexNum].GetComponent<Image>().color = Color.magenta;
-        else if (color == "white") vertices[vertexNum].GetComponent<Image>().color = Color.white;
-        else if (color == "grey") vertices[vertexNum].GetComponent<Image>().color = Color.grey;
+        Color col = vertices[vertexNum].GetComponent<Image>().color;
+
+        if (color == "green") vertices[vertexNum].GetComponent<Image>().color = new Color(0, 225, 0, .3f);
+        else if (color == "red") vertices[vertexNum].GetComponent<Image>().color = new Color(225, 0, 0, .3f);
+        else if (color == "blue") vertices[vertexNum].GetComponent<Image>().color = new Color(0, 0, 225, .3f);
+        else if (color == "cyan") vertices[vertexNum].GetComponent<Image>().color = new Color(0, 225, 255, .3f);
+        else if (color == "magenta") vertices[vertexNum].GetComponent<Image>().color = new Color(255, 0, 255, .3f);
+        else if (color == "white") vertices[vertexNum].GetComponent<Image>().color = new Color(225, 225, 225, .3f);
+        else if (color == "grey") vertices[vertexNum].GetComponent<Image>().color = new Color(100, 100, 100, .3f);
         else print("Invalid Color Selected");        
 
     }
@@ -492,13 +590,30 @@ public class MainController : MonoBehaviour
         SceneManager.LoadScene(0);
     }
 
+    public void ClickSkip()
+    {
+        PlayAudioClip(2);
+
+        SceneManager.LoadScene(1);
+    }
+
     public int GetVertexSize(int vertexNum)
     {
         //print((float)(vertices[vertexNum].GetComponent<RectTransform>().rect.height - 30f) / (float)10);
         return Mathf.RoundToInt((float)(vertices[vertexNum].GetComponent<RectTransform>().rect.height - 30f) / (float)10);
         
     }
-        
+
+
+    #endregion
+
+    #region Function Animations
+
+    public void PlayAnimation(GameObject objectToChangeAnimation, string nameOfAnimation)
+    {
+        var anim = objectToChangeAnimation.GetComponent<Animator>();
+        anim.Play(nameOfAnimation);
+    }
 
     #endregion
 
