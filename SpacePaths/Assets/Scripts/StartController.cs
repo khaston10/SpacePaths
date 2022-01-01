@@ -173,7 +173,7 @@ public class StartController : MonoBehaviour
 
     public void ClickStartPuzzle(int difficulty)
     {
-        print("Start");
+        PlayAudioClip(5);
         currentPuzzleDifficulty = difficulty;
         SaveData();
         SceneManager.LoadScene(1);
@@ -184,6 +184,8 @@ public class StartController : MonoBehaviour
 
     public void ToggleSettingsPanel()
     {
+        PlayAudioClip(1);
+
         if (SettingsPanel.activeInHierarchy)
         {
             SettingsPanel.SetActive(false);
@@ -216,6 +218,18 @@ public class StartController : MonoBehaviour
     {
         masterMixer.SetFloat("SFXVol", vol);
         sfxVolume = vol;
+    }
+
+    public void PlayAudioClip(int clip) 
+    {
+        /*
+            0 - Mouse click Good 1
+            1 - Mouse click Good 2
+            2 - Mouse click Bad 1
+        */
+
+        GameObject.Find("Sfx Source").GetComponent<SoundEffectsController>().PlayClip(clip);
+
     }
 
     #endregion

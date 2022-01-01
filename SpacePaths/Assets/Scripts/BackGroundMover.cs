@@ -25,13 +25,11 @@ public class BackGroundMover : MonoBehaviour
         if (!CheckIfInbounds())
         {
             moveDir = PickNewDirection();
-            print(moveDir);
         }
     }
 
     public Vector2 PickNewDirection()
     {
-        print("Picking New Direction");
         var newDirection = Vector2.zero;
 
         if (gameObject.transform.position.x > spriteSize[0])
